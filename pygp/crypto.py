@@ -21,73 +21,75 @@ from cryptography import utils
 
 
 
-@utils.register_interface(ec.EllipticCurve)
-class NISTP384R1(object):
+# Custom EllipticCurve definitions.
+#
+# Historically these classes were registered as virtual subclasses of
+# ``ec.EllipticCurve`` using ``cryptography.utils.register_interface`` and were
+# injected into the private ``ec._CURVE_TYPES`` mapping. Both of those APIs were
+# removed in modern ``cryptography`` releases (and ``_CURVE_TYPES`` is a private
+# implementation detail that is not guaranteed to exist). To stay compatible
+# with Python 3.12 - 3.14 and recent ``cryptography`` versions we instead make
+# the classes real subclasses of ``ec.EllipticCurve`` and keep our own public
+# curve registry (``CURVE_TYPES``).
+class NISTP384R1(ec.EllipticCurve):
     name = "secp384r1"
     key_size = 384
 
-@utils.register_interface(ec.EllipticCurve)
-class NISTP521R1(object):
+class NISTP521R1(ec.EllipticCurve):
     name = "secp521r1"
     key_size = 521
 
-@utils.register_interface(ec.EllipticCurve)
-class NISTP256R1(object):
+class NISTP256R1(ec.EllipticCurve):
     name = "secp256r1"
     key_size = 256
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP192R1(object):
+class BRAINPOOLP192R1(ec.EllipticCurve):
     name = "brainpoolP192r1"
     key_size = 192
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP192T1(object):
+class BRAINPOOLP192T1(ec.EllipticCurve):
     name = "brainpoolP192t1"
     key_size = 192
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP256R1(object):
+class BRAINPOOLP256R1(ec.EllipticCurve):
     name = "brainpoolP256r1"
     key_size = 256
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP256T1(object):
+class BRAINPOOLP256T1(ec.EllipticCurve):
     name = "brainpoolP256t1"
     key_size = 256
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP384R1(object):
+class BRAINPOOLP384R1(ec.EllipticCurve):
     name = "brainpoolP384r1"
     key_size = 384
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP384T1(object):
+class BRAINPOOLP384T1(ec.EllipticCurve):
     name = "brainpoolP384t1"
     key_size = 384
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP512R1(object):
+class BRAINPOOLP512R1(ec.EllipticCurve):
     name = "brainpoolP512r1"
     key_size = 512
 
-@utils.register_interface(ec.EllipticCurve)
-class BRAINPOOLP512T1(object):
+class BRAINPOOLP512T1(ec.EllipticCurve):
     name = "brainpoolP512t1"
     key_size = 512
 
 
-ec._CURVE_TYPES['nistP384r1'] = NISTP384R1
-ec._CURVE_TYPES['nistP521r1'] = NISTP521R1
-ec._CURVE_TYPES['nistP256r1'] = NISTP256R1
-ec._CURVE_TYPES['brainpoolP192r1'] = BRAINPOOLP192R1
-ec._CURVE_TYPES['brainpoolP192t1'] = BRAINPOOLP192T1
-ec._CURVE_TYPES['brainpoolP256r1'] = BRAINPOOLP256R1
-ec._CURVE_TYPES['brainpoolP256t1'] = BRAINPOOLP256T1
-ec._CURVE_TYPES['brainpoolP384r1'] = BRAINPOOLP384R1
-ec._CURVE_TYPES['brainpoolP384t1'] = BRAINPOOLP384T1
-ec._CURVE_TYPES['brainpoolP512r1'] = BRAINPOOLP512R1
-ec._CURVE_TYPES['brainpoolP512t1'] = BRAINPOOLP512T1
+# Public registry of supported curves (curve name -> curve class).
+CURVE_TYPES = {
+    'nistP384r1': NISTP384R1,
+    'nistP521r1': NISTP521R1,
+    'nistP256r1': NISTP256R1,
+    'brainpoolP192r1': BRAINPOOLP192R1,
+    'brainpoolP192t1': BRAINPOOLP192T1,
+    'brainpoolP256r1': BRAINPOOLP256R1,
+    'brainpoolP256t1': BRAINPOOLP256T1,
+    'brainpoolP384r1': BRAINPOOLP384R1,
+    'brainpoolP384t1': BRAINPOOLP384T1,
+    'brainpoolP512r1': BRAINPOOLP512R1,
+    'brainpoolP512t1': BRAINPOOLP512T1,
+}
 
 # 8 bytes long NULL ICV
 ICV_NULL_8 = '0000000000000000'
@@ -122,7 +124,7 @@ def ISO_9797_M1_Padding_left(data, bloc_size = 8):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # Perform padding
     _data_padd  = data
     while ( ( (len (_data_padd)/2) % bloc_size) != 0):
@@ -146,7 +148,7 @@ def ISO_9797_M1_Padding(data, bloc_size = 8):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # Perform padding
     _data_padd  = data
     while ( ( (len (_data_padd)/2) % bloc_size) != 0):
@@ -169,7 +171,7 @@ def ISO_9797_M2_Padding_left(data, bloc_size = 8):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # Perform padding
     first = True
     _data_padd  = data
@@ -205,7 +207,7 @@ def ISO_9797_M2_Padding(data, bloc_size = 8):
 
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # Perform padding
     _data_padd  = data + '80'
     while ( ( (len (_data_padd)/2) % bloc_size) != 0):
@@ -225,7 +227,7 @@ def Remove_ISO_9797_M2_Padding(data ):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # removing padding
     data_bytes = toByteArray(data)
     offset = len(data_bytes) - 1
@@ -263,7 +265,7 @@ def RSA_PKCS_1_Padding(data, key_size = 1024):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
 
     padded_data="0001"
 
@@ -579,7 +581,7 @@ def MAC3(data, key, padding='ISO_9797_M2', iv="0000000000000000"):
     # must check the key size
     # remove space if any
     import re
-    key = ''.join( re.split( '\W+', key.upper() ) )
+    key = ''.join( re.split( r'\W+', key.upper() ) )
     if len(key) < 16*2:
         raise BaseException("Invalid key length for the MAC3 operation")
 
@@ -624,7 +626,7 @@ def SHA1(data):
     '''
     # remove space if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.SHA1(), backend=default_backend())
     digest.update(data_bytes)
@@ -641,7 +643,7 @@ def SHA224(data):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.SHA224(), backend=default_backend())
     digest.update(data_bytes)
@@ -658,7 +660,7 @@ def SHA256(data):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
     digest.update(data_bytes)
@@ -675,7 +677,7 @@ def SHA384(data):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.SHA384(), backend=default_backend())
     digest.update(data_bytes)
@@ -692,7 +694,7 @@ def SHA512(data):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
     digest.update(data_bytes)
@@ -709,7 +711,7 @@ def MD5(data):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     data_bytes  = bytes.fromhex(data)
     digest = hashes.Hash(hashes.MD5(), backend=default_backend())
     digest.update(data_bytes)
@@ -730,8 +732,8 @@ def HMAC(data, key, hash_algorithm = 'SHA1'):
  
     '''
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
-    key = ''.join( re.split( '\W+', key.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
+    key = ''.join( re.split( r'\W+', key.upper() ) )
     data_bytes  = bytes.fromhex(data)
     key_bytes = bytes.fromhex(key)
 
@@ -820,9 +822,9 @@ def build_RSA_SFM_keys(public_modulus, public_exponent, private_exponent):
     '''
     import re
     # remove space if any
-    public_modulus = ''.join( re.split( '\W+', public_modulus.upper() ) )
-    public_exponent = ''.join( re.split( '\W+', public_exponent.upper() ) )
-    private_exponent = ''.join( re.split( '\W+', private_exponent.upper() ) )
+    public_modulus = ''.join( re.split( r'\W+', public_modulus.upper() ) )
+    public_exponent = ''.join( re.split( r'\W+', public_exponent.upper() ) )
+    private_exponent = ''.join( re.split( r'\W+', private_exponent.upper() ) )
 
     # Computes the prime factors (p, q) given the modulus, public exponent, and private exponent
     public_modulus_as_int = int(public_modulus,16)
@@ -881,14 +883,14 @@ def build_RSA_keys(public_modulus, public_exponent, p, q, d, dmp1, dmq1, iqmp):
     '''
     import re
     # remove space if any
-    public_modulus = ''.join( re.split( '\W+', public_modulus.upper() ) )
-    public_exponent = ''.join( re.split( '\W+', public_exponent.upper() ) )
-    p = ''.join( re.split( '\W+', p.upper() ) )
-    q = ''.join( re.split( '\W+', q.upper() ) )
-    d = ''.join( re.split( '\W+', d.upper() ) )
-    dmp1 = ''.join( re.split( '\W+', dmp1.upper() ) )
-    dmq1 = ''.join( re.split( '\W+', dmq1.upper() ) )
-    iqmp = ''.join( re.split( '\W+', iqmp.upper() ) )
+    public_modulus = ''.join( re.split( r'\W+', public_modulus.upper() ) )
+    public_exponent = ''.join( re.split( r'\W+', public_exponent.upper() ) )
+    p = ''.join( re.split( r'\W+', p.upper() ) )
+    q = ''.join( re.split( r'\W+', q.upper() ) )
+    d = ''.join( re.split( r'\W+', d.upper() ) )
+    dmp1 = ''.join( re.split( r'\W+', dmp1.upper() ) )
+    dmq1 = ''.join( re.split( r'\W+', dmq1.upper() ) )
+    iqmp = ''.join( re.split( r'\W+', iqmp.upper() ) )
 
     private_key = RSA_private_key(p, q, d, dmp1, dmq1, iqmp)
     private_key.set_public_key(public_modulus, public_exponent)
@@ -913,8 +915,8 @@ def build_RSA_public_keys(public_modulus, public_exponent):
     '''
     import re
     # remove space if any
-    public_modulus = ''.join( re.split( '\W+', public_modulus.upper() ) )
-    public_exponent = ''.join( re.split( '\W+', public_exponent.upper() ) )
+    public_modulus = ''.join( re.split( r'\W+', public_modulus.upper() ) )
+    public_exponent = ''.join( re.split( r'\W+', public_exponent.upper() ) )
 
     public_key = RSA_public_key(public_modulus, public_exponent)
     public_key.build()
@@ -938,7 +940,7 @@ def RSA_signature(message, private_key, padding_algorithm = 'PKCS1', hash_algori
  
     '''
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
     # managing the padding
     pad = padding.PKCS1v15
     if padding_algorithm == 'PKCS1':
@@ -991,8 +993,8 @@ def RSA_verify( message, signature, public_key, padding_algorithm= 'PKCS1', hash
 
     # remove space if any
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
-    signature = ''.join( re.split( '\W+', signature.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
+    signature = ''.join( re.split( r'\W+', signature.upper() ) )
     
     # managing the padding
     pad = padding.PKCS1v15
@@ -1038,7 +1040,7 @@ def DSA_signature(message, private_key, hash_algorithm = 'SHA1'):
  
     '''
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
     hash = hashes.SHA1()
     # managing the hash algorithm
     if hash_algorithm == 'SHA1':
@@ -1074,8 +1076,8 @@ def DSA_verify(message, signature, public_key, hash_algorithm= 'SHA1'):
  
     '''
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
-    signature = ''.join( re.split( '\W+', signature.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
+    signature = ''.join( re.split( r'\W+', signature.upper() ) )
     
     hash = hashes.SHA1()
     # managing the hash algorithm
@@ -1112,7 +1114,7 @@ def ECDSA_signature(message, private_key, hash_algorithm = 'SHA1'):
  
     '''
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
     hash = hashes.SHA1()
     # managing the hash algorithm
     if hash_algorithm == 'SHA1':
@@ -1148,8 +1150,8 @@ def ECDSA_verify(message, signature, public_key, hash_algorithm= 'SHA1'):
  
     '''
     import re
-    message = ''.join( re.split( '\W+', message.upper() ) )
-    signature = ''.join( re.split( '\W+', signature.upper() ) )
+    message = ''.join( re.split( r'\W+', message.upper() ) )
+    signature = ''.join( re.split( r'\W+', signature.upper() ) )
     
     hash = hashes.SHA1()
     # managing the hash algorithm
@@ -1219,7 +1221,7 @@ def generate_EC_keys( curve_name = 'brainpoolP256r1'  ):
     '''
     # get the EC class matching this curve name
     try:
-        curve = ec._CURVE_TYPES[curve_name]
+        curve = CURVE_TYPES[curve_name]()
     except KeyError:
 
         return None,None
@@ -1291,12 +1293,12 @@ def build_EC_keys( s, x, y, curve_name = 'brainpoolP256r1'):
     '''
     import re
     # remove space if any
-    s = ''.join( re.split( '\W+', s.upper() ) )
-    x = ''.join( re.split( '\W+', x.upper() ) )
-    y = ''.join( re.split( '\W+', y.upper() ) )
+    s = ''.join( re.split( r'\W+', s.upper() ) )
+    x = ''.join( re.split( r'\W+', x.upper() ) )
+    y = ''.join( re.split( r'\W+', y.upper() ) )
 
     try:
-        curve = ec._CURVE_TYPES[curve_name]()
+        curve = CURVE_TYPES[curve_name]()
     except KeyError:
 
         return None,None
@@ -1352,11 +1354,11 @@ def build_EC_public_key( x, y, curve_name = 'brainpoolP256r1'):
     '''
     import re
     # remove space if any
-    x = ''.join( re.split( '\W+', x.upper() ) )
-    y = ''.join( re.split( '\W+', y.upper() ) )
+    x = ''.join( re.split( r'\W+', x.upper() ) )
+    y = ''.join( re.split( r'\W+', y.upper() ) )
 
     try:
-        curve = ec._CURVE_TYPES[curve_name]()
+        curve = CURVE_TYPES[curve_name]()
     except KeyError:
 
         return None,None
@@ -1435,11 +1437,11 @@ def build_DSA_keys(p, q, g, public_key, private_key):
     '''
     import re
     # remove space if any
-    p = ''.join( re.split( '\W+', p.upper() ) )
-    q = ''.join( re.split( '\W+', q.upper() ) )
-    g = ''.join( re.split( '\W+', g.upper() ) )
-    public_key = ''.join( re.split( '\W+', public_key.upper() ) )
-    private_key = ''.join( re.split( '\W+', private_key.upper() ) )
+    p = ''.join( re.split( r'\W+', p.upper() ) )
+    q = ''.join( re.split( r'\W+', q.upper() ) )
+    g = ''.join( re.split( r'\W+', g.upper() ) )
+    public_key = ''.join( re.split( r'\W+', public_key.upper() ) )
+    private_key = ''.join( re.split( r'\W+', private_key.upper() ) )
     # build keys objects
     private_key = DSA_private_key(p, q, g, private_key)
     private_key.set_public_key(public_key)
@@ -1514,10 +1516,10 @@ def build_DH_keys(p, g, private_key, public_key):
     '''
     import re
     # remove space if any
-    p = ''.join( re.split( '\W+', p.upper() ) )
-    g = ''.join( re.split( '\W+', g.upper() ) )
-    public_key = ''.join( re.split( '\W+', public_key.upper() ) )
-    private_key = ''.join( re.split( '\W+', private_key.upper() ) )
+    p = ''.join( re.split( r'\W+', p.upper() ) )
+    g = ''.join( re.split( r'\W+', g.upper() ) )
+    public_key = ''.join( re.split( r'\W+', public_key.upper() ) )
+    private_key = ''.join( re.split( r'\W+', private_key.upper() ) )
 
     # build keys objects
     private_key = DH_private_key(p, g, private_key)

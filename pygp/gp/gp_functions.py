@@ -593,7 +593,7 @@ def set_status(cardElement, lifeCycleState, aid):
     log_start("set_status")
     # supress blank if any
     import re
-    aid = ''.join( re.split( '\W+', aid.upper() ) )
+    aid = ''.join( re.split( r'\W+', aid.upper() ) )
 
     capdu = "80 F0 " + cardElement + lifeCycleState + lv (aid)
     
@@ -613,7 +613,7 @@ def set_crs_status(status_type, status_value, aid):
     log_start("set_crs_status")
     # supress blank if any
     import re
-    aid = ''.join( re.split( '\W+', aid.upper() ) )
+    aid = ''.join( re.split( r'\W+', aid.upper() ) )
 
     capdu = "80 F0 " + status_type + status_value + "4F" + lv(aid)
     
@@ -795,7 +795,7 @@ def store_data(data):
     
     # supress blank if any
     import re
-    data = ''.join( re.split( '\W+', data.upper() ) )
+    data = ''.join( re.split( r'\W+', data.upper() ) )
     # convert to byte array
     bytelist_data = toByteArray(data)
     remaining_bytes = len(bytelist_data)
@@ -839,7 +839,7 @@ def get_data(identifier):
     # build the APDU
     # supress blank if any
     import re
-    identifier = ''.join( re.split( '\W+', identifier.upper() ) )
+    identifier = ''.join( re.split( r'\W+', identifier.upper() ) )
     # check the size of the identifier (it is a string so 2 byte correspond to 4 characters )
     if len(identifier) < 0x00 or len(identifier) > 0x04:
         # identifier must be 1 or two byte string
@@ -872,7 +872,7 @@ def get_status(card_element):
     # build the APDU
     # supress blank if any
     import re
-    card_element = ''.join( re.split( '\W+', card_element.upper() ) )
+    card_element = ''.join( re.split( r'\W+', card_element.upper() ) )
    
     capdu = "80 F2 " + card_element + "02 02 4F 00" + "00"
     

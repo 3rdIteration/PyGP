@@ -305,16 +305,16 @@ def get_key_in_repository(keysetversion, key_identifier = None):
         if (key[0] == keysetversion):
             if key_identifier != None:
                 if (key[1] == key_identifier):
-                    found_key_vn = ''.join( re.split( '\W+', key[0].upper() ) )
-                    found_key_id = ''.join( re.split( '\W+', key[1].upper() ) )
-                    found_key_type = ''.join( re.split( '\W+', key[2].upper() ) )
-                    found_key_value = ''.join( re.split( '\W+', key[3].upper() ) )
+                    found_key_vn = ''.join( re.split( r'\W+', key[0].upper() ) )
+                    found_key_id = ''.join( re.split( r'\W+', key[1].upper() ) )
+                    found_key_type = ''.join( re.split( r'\W+', key[2].upper() ) )
+                    found_key_value = ''.join( re.split( r'\W+', key[3].upper() ) )
                     found_key_list.append( (found_key_vn, found_key_id, found_key_type, found_key_value) )
             else:
-                found_key_vn = ''.join( re.split( '\W+', key[0].upper() ) )
-                found_key_id = ''.join( re.split( '\W+', key[1].upper() ) )
-                found_key_type = ''.join( re.split( '\W+', key[2].upper() ) )
-                found_key_value = ''.join( re.split( '\W+', key[3].upper() ) )
+                found_key_vn = ''.join( re.split( r'\W+', key[0].upper() ) )
+                found_key_id = ''.join( re.split( r'\W+', key[1].upper() ) )
+                found_key_type = ''.join( re.split( r'\W+', key[2].upper() ) )
+                found_key_value = ''.join( re.split( r'\W+', key[3].upper() ) )
                 found_key_list.append( (found_key_vn, found_key_id, found_key_type, found_key_value) )
     
     return found_key_list
