@@ -53,9 +53,10 @@ class Test_Loadfile(unittest.TestCase):
         # every block but the last must be exactly block_size*2 hex chars long
         for block in blocks[:-1]:
             self.assertEqual(len(block), 8 * 2)
-        # re-assembling the blocks must reproduce the header + code
+        # re-assembling the blocks must reproduce the header + code. The helper
+        # name keeps its trailing underscores, so Python applies no name mangling.
         self.assertEqual("".join(blocks),
-                         lf._Loadfile__createHeaderSize__() + lf.get_raw_code())
+                         lf.__createHeaderSize__() + lf.get_raw_code())
 
 
 class Test_Install_Capfile(unittest.TestCase):
