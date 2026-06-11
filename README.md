@@ -10,7 +10,10 @@ You can find more information in the [documentation](http://pygp.readthedocs.io/
 
 ## Command line interface
 
-Installing the package registers a `pygp` command whose options follow the
+### Using the installed `pygp` command
+
+After installing the package with `pip install .`, a `pygp` command is registered
+and can be used directly. Options follow the
 [GlobalPlatformPro](https://github.com/martinpaljak/GlobalPlatformPro) `gp`
 conventions:
 
@@ -41,4 +44,22 @@ pygp --cap-info MyApplet.cap
 ```
 
 Run `pygp --help` for the full list of options.
+
+### Running from source without installation
+
+You can also run the CLI directly from the source repository without installing
+the package, using Python's `-m` flag:
+
+```sh
+# Without installation, use python -m pygp.cli instead of pygp
+python -m pygp.cli --help
+
+# All commands work the same way
+python -m pygp.cli --list
+python -m pygp.cli --install MyApplet.cap
+python -m pygp.cli --install Seedkeeper.cap --params 020000
+python -m pygp.cli --cap-info MyApplet.cap
+```
+
+This is useful for development, testing, or when you prefer not to install the package.
 
