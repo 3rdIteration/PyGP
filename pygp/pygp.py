@@ -248,6 +248,40 @@ def echo(message, log_level=INFO_LEVEL):
         pass
 
 
+def list_readers():
+    """
+        Returns the list of available PC/SC reader names. This does not require a
+        card to be present and does not keep the PC/SC context open.
+
+        :returns list: a list of reader name strings.
+    """
+    try:
+        error_status = conn.establish_context()
+        __handle_error_status__(error_status, "list_readers: ")
+
+        error_status, readers = conn.list_readers()
+        __handle_error_status__(error_status, "list_readers: ")
+
+        reader_names = []
+        for reader in readers:
+            if isinstance(reader, bytes):
+                reader = reader.decode()
+            reader_names.append(reader)
+
+        for reader_name in reader_names:
+            logger.log_info("Reader: %s" % reader_name)
+
+        return reader_names
+    except BaseException as e:
+        logger.log_error(str(e))
+        raise
+    finally:
+        try:
+            conn.release_context()
+        except BaseException:
+            pass
+
+
 def set_key(*args):
     """
     Put key definition into the off card key repository.
@@ -1569,6 +1603,16 @@ def upload_install(load_file_path, security_domain_aid, executable_module_aid, a
         raise
 
 
+def get_secure_channel_protocol():
+    '''
+        Returns the Secure Channel Protocol (SCP) negotiated on the current working
+        channel after a successful :func:`auth()`, as an integer (e.g. ``0x02`` for
+        SCP02 or ``0x03`` for SCP03) or ``None`` if no secure channel is established.
+    '''
+    security_info = gp.securityInfo[gp.securityInfo[4]]
+    return security_info.get('secureChannelProtocol')
+
+
 def upload(load_file_path, security_domain_aid ):
     '''
         Performs a load of an application under the Security Domain
@@ -1593,4 +1637,153 @@ def upload(load_file_path, security_domain_aid ):
     except BaseException as e:
         logger.log_error(str(e))
         raise
+
+
+def get_cap_info(load_file_path):
+    '''
+        Parse a CAP (or IJC) load file and return the :class:`pygp.loadfile.Loadfile`
+        object describing it. This is useful to inspect the package AID, the list
+        of applet (module) AIDs and the other components before installing.
+
+        :param str load_file_path: The path of the load file.
+
+        :returns: a :class:`pygp.loadfile.Loadfile` instance.
+    '''
+    return loadfile.Loadfile(load_file_path)
+
+
+def get_applet_aids(load_file_path):
+    '''
+        Returns the list of applet (module) AIDs contained in a CAP file. A single
+        CAP file can contain several applets (for instance the Keycard / Status and
+        Seedkeeper CAP files), so this always returns a list.
+
+        :param str load_file_path: The path of the load file.
+
+        :returns list: a list of applet AID strings (may be empty).
+    '''
+    return loadfile.Loadfile(load_file_path).get_applet_aid()
+
+
+def install_capfile(load_file_path, security_domain_aid = '', module_aids = None, instance_aids = None,
+                    application_privileges = None, application_specific_parameters = None,
+                    install_parameters = None, make_selectable = True, block_size = 230,
+                    load_file_data_block_hash = None, load_parameters = None, load_token = None,
+                    install_token = None):
+    '''
+        Performs a complete installation of a CAP file: install for load, load of all
+        the CAP blocks and then one install for install per applet (module) found in
+        the CAP file. This handles CAP files that contain **several applets** (such as
+        the Keycard / Status or Seedkeeper CAP files) in a single call.
+
+        :param str load_file_path: The path of the CAP (or IJC) file to install.
+        :param str security_domain_aid: The AID of the Security Domain the package is
+            associated with. An empty string (default) associates it with the currently
+            selected Security Domain (usually the Issuer Security Domain).
+        :param list module_aids: The list of applet (module) AIDs to instantiate. If
+            ``None`` (default) every applet present in the CAP file is instantiated.
+        :param list instance_aids: The list of application instance AIDs to create, in the
+            same order as ``module_aids``. If ``None`` (default) the module AID is reused
+            as the instance AID.
+        :param application_privileges: Either a single list of :ref:`privileges` applied to
+            every instance, or a list of privilege lists (one per module).
+        :param application_specific_parameters: The application specific install parameters
+            (encoded under tag ``C9``). Either a single hexadecimal string applied to every
+            instance, or a list (one per module). Needed for example by the Seedkeeper applet
+            to set the secret memory size.
+        :param install_parameters: The system install parameters (encoded under tag ``EF``).
+            Either a single hexadecimal string applied to every instance, or a list.
+        :param bool make_selectable: True (default) if the applications must be made selectable.
+        :param int block_size: The size of the LOAD data blocks.
+        :param str load_file_data_block_hash: Optional load file data block hash.
+        :param str load_parameters: Optional load parameters (tag ``EF``).
+        :param str load_token: Optional load token.
+        :param install_token: Optional install token. Either a single value applied to every
+            instance or a list (one per module).
+
+        :returns list: The list of (module_aid, instance_aid) tuples that were installed.
+
+        .. note:: A token-protected card or DAP verification is not handled automatically by
+            this helper; provide the relevant tokens / hashes explicitly when required.
+    '''
+    try:
+        # 1. parse and verify the load file
+        load_file_obj = loadfile.Loadfile(load_file_path)
+        package_aid = load_file_obj.get_aid()
+
+        # 2. install for load
+        error_status = gp.install_load(package_aid, security_domain_aid, load_file_data_block_hash, load_parameters, load_token)
+        __handle_error_status__(error_status, "install_capfile (install for load): ")
+
+        # 3. load the CAP blocks
+        error_status = gp.load_blocks(load_file_path, block_size)
+        __handle_error_status__(error_status, "install_capfile (load): ")
+
+        # 4. determine the modules to instantiate
+        if module_aids is None:
+            module_aids = load_file_obj.get_applet_aid()
+        if module_aids is None:
+            module_aids = []
+
+        installed = []
+        for index, module_aid in enumerate(module_aids):
+            # resolve the instance AID (default to the module AID)
+            if instance_aids is not None and index < len(instance_aids) and instance_aids[index] is not None:
+                instance_aid = instance_aids[index]
+            else:
+                instance_aid = module_aid
+
+            # resolve the per-applet optional fields (accept either a single value or a list)
+            privileges = __select_privileges__(application_privileges, index)
+            specific_parameters = __select_scalar__(application_specific_parameters, index)
+            ef_parameters = __select_scalar__(install_parameters, index)
+            token = __select_scalar__(install_token, index)
+
+            b_string_privilege = gp_utils.privilegesToBytes(privileges)
+
+            error_status = gp.install_install(make_selectable, package_aid, module_aid, instance_aid,
+                                              b_string_privilege, specific_parameters, ef_parameters, token)
+            __handle_error_status__(error_status, "install_capfile (install for install): ")
+            installed.append((module_aid, instance_aid))
+
+        return installed
+
+    except BaseException as e:
+        logger.log_error(str(e))
+        raise
+
+
+def __select_privileges__(privileges, index):
+    '''
+        Resolve the privileges to use for the applet at position ``index``.
+
+        ``privileges`` may be ``None`` (no privileges), a flat list of privilege
+        strings shared by every applet (e.g. ``["SD", "TP"]``) or a list of
+        privilege lists, one per applet (e.g. ``[["SD"], []]``).
+    '''
+    if privileges is None:
+        return []
+    # list of per-applet privilege lists
+    if isinstance(privileges, list) and len(privileges) > 0 and all(isinstance(item, list) for item in privileges):
+        if index < len(privileges):
+            return privileges[index]
+        return []
+    # a flat privileges list shared by every applet
+    return privileges
+
+
+def __select_scalar__(value, index):
+    '''
+        Resolve a per-applet scalar value (parameters, token).
+
+        ``value`` may be ``None``, a single value shared by every applet, or a
+        list with one value per applet.
+    '''
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        if index < len(value):
+            return value[index]
+        return None
+    return value
 
