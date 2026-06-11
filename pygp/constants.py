@@ -318,7 +318,8 @@ SD_LifeCycleState = ({'01':"OP READY",\
 Application_LifeCycleState= ({'03':"INSTALLED",\
                       '07':"SELECTABLE",\
                       '0F':"PERSONALIZED",\
-                      '80':"LOCKED"})
+                      '80':"LOCKED",\
+                      '87':"LOCKED"})
 
 ExecutableLoadFile_LifeCycleState = ({'01':"LOADED"})
 

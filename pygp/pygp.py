@@ -248,6 +248,40 @@ def echo(message, log_level=INFO_LEVEL):
         pass
 
 
+def list_readers():
+    """
+        Returns the list of available PC/SC reader names. This does not require a
+        card to be present and does not keep the PC/SC context open.
+
+        :returns list: a list of reader name strings.
+    """
+    try:
+        error_status = conn.establish_context()
+        __handle_error_status__(error_status, "list_readers: ")
+
+        error_status, readers = conn.list_readers()
+        __handle_error_status__(error_status, "list_readers: ")
+
+        reader_names = []
+        for reader in readers:
+            if isinstance(reader, bytes):
+                reader = reader.decode()
+            reader_names.append(reader)
+
+        for reader_name in reader_names:
+            logger.log_info("Reader: %s" % reader_name)
+
+        return reader_names
+    except BaseException as e:
+        logger.log_error(str(e))
+        raise
+    finally:
+        try:
+            conn.release_context()
+        except BaseException:
+            pass
+
+
 def set_key(*args):
     """
     Put key definition into the off card key repository.
@@ -305,16 +339,16 @@ def get_key_in_repository(keysetversion, key_identifier = None):
         if (key[0] == keysetversion):
             if key_identifier != None:
                 if (key[1] == key_identifier):
-                    found_key_vn = ''.join( re.split( '\W+', key[0].upper() ) )
-                    found_key_id = ''.join( re.split( '\W+', key[1].upper() ) )
-                    found_key_type = ''.join( re.split( '\W+', key[2].upper() ) )
-                    found_key_value = ''.join( re.split( '\W+', key[3].upper() ) )
+                    found_key_vn = ''.join( re.split( r'\W+', key[0].upper() ) )
+                    found_key_id = ''.join( re.split( r'\W+', key[1].upper() ) )
+                    found_key_type = ''.join( re.split( r'\W+', key[2].upper() ) )
+                    found_key_value = ''.join( re.split( r'\W+', key[3].upper() ) )
                     found_key_list.append( (found_key_vn, found_key_id, found_key_type, found_key_value) )
             else:
-                found_key_vn = ''.join( re.split( '\W+', key[0].upper() ) )
-                found_key_id = ''.join( re.split( '\W+', key[1].upper() ) )
-                found_key_type = ''.join( re.split( '\W+', key[2].upper() ) )
-                found_key_value = ''.join( re.split( '\W+', key[3].upper() ) )
+                found_key_vn = ''.join( re.split( r'\W+', key[0].upper() ) )
+                found_key_id = ''.join( re.split( r'\W+', key[1].upper() ) )
+                found_key_type = ''.join( re.split( r'\W+', key[2].upper() ) )
+                found_key_value = ''.join( re.split( r'\W+', key[3].upper() ) )
                 found_key_list.append( (found_key_vn, found_key_id, found_key_type, found_key_value) )
     
     return found_key_list
@@ -363,9 +397,10 @@ def terminal(readerName = None):
             if len(list_readernames) > 0:
                 for readers in list_readernames:
                     # then perform a card connect to verify the card connection
-                    error_status = conn.card_connect(str(readers.decode()), current_protocol)
+                    reader_str = readers if isinstance(readers, str) else readers.decode()
+                    error_status = conn.card_connect(str(reader_str), current_protocol)
                     if error_status['errorStatus'] == error.ERROR_STATUS_SUCCESS:
-                        readerName = readers.decode()
+                        readerName = reader_str
                         break
 
                 if readerName == None:
@@ -886,16 +921,21 @@ def ls():
 
         if app_info != None:
             status_dic = tlv_read(app_info)['E3']
-            for status_app in status_dic:
+            # Handle both dict and list returns from tlv_read
+            app_list = status_dic if isinstance(status_dic, list) else [status_dic]
+            for status_app in app_list:
                 aid_name = aid_dict.get(status_app['4F'].upper(), '')
+                lifecycle_state = Application_LifeCycleState.get(status_app['9F70'][:2], status_app['9F70'][:2])
                 logger.log_info("Application AID : %s {%s} (%s) (%s)" % \
                                 (status_app['4F'].upper(), aid_name, \
-                                Application_LifeCycleState[status_app['9F70'][:2]], \
+                                lifecycle_state, \
                                 gp_utils.bytesToPrivileges(status_app['C5']) ))
 
         if exefile_info != None:      
             status_dic = tlv_read(exefile_info)['E3']
-            for status_elf in status_dic:
+            # Handle both dict and list returns from tlv_read
+            elf_list = status_dic if isinstance(status_dic, list) else [status_dic]
+            for status_elf in elf_list:
                 aid_name = aid_dict.get(status_elf['4F'].upper(), '')
                 logger.log_info("Load file AID : %s {%s} (%s)" % \
                                 (status_elf['4F'].upper(), aid_name, \
@@ -1569,6 +1609,16 @@ def upload_install(load_file_path, security_domain_aid, executable_module_aid, a
         raise
 
 
+def get_secure_channel_protocol():
+    '''
+        Returns the Secure Channel Protocol (SCP) negotiated on the current working
+        channel after a successful :func:`auth()`, as an integer (e.g. ``0x02`` for
+        SCP02 or ``0x03`` for SCP03) or ``None`` if no secure channel is established.
+    '''
+    security_info = gp.securityInfo[gp.securityInfo[4]]
+    return security_info.get('secureChannelProtocol')
+
+
 def upload(load_file_path, security_domain_aid ):
     '''
         Performs a load of an application under the Security Domain
@@ -1593,4 +1643,432 @@ def upload(load_file_path, security_domain_aid ):
     except BaseException as e:
         logger.log_error(str(e))
         raise
+
+
+def get_cap_info(load_file_path):
+    '''
+        Parse a CAP (or IJC) load file and return the :class:`pygp.loadfile.Loadfile`
+        object describing it. This is useful to inspect the package AID, the list
+        of applet (module) AIDs and the other components before installing.
+
+        :param str load_file_path: The path of the load file.
+
+        :returns: a :class:`pygp.loadfile.Loadfile` instance.
+    '''
+    return loadfile.Loadfile(load_file_path)
+
+
+def get_applet_aids(load_file_path):
+    '''
+        Returns the list of applet (module) AIDs contained in a CAP file. A single
+        CAP file can contain several applets (for instance the Keycard / Status and
+        Seedkeeper CAP files), so this always returns a list.
+
+        :param str load_file_path: The path of the load file.
+
+        :returns list: a list of applet AID strings (may be empty).
+    '''
+    return loadfile.Loadfile(load_file_path).get_applet_aid()
+
+
+# Applet NDEF mappings - maps NDEF instance AID to (applet_name, module_aid, instance_aid)
+NDEF_APPLET_MAPPINGS = {
+    'KEYCARD': {
+        'module_aid': 'A000000804000102',
+        'instance_aid': 'D2760000850101',
+    },
+    'SEEDKEEPER': {
+        'module_aid': '536565644B656570657201',
+        'instance_aid': 'D2760000850101',
+    },
+}
+
+# Keycard applet instance AID mappings for known CAP file versions
+# Maps module AID to the instance AID that should be created
+KEYCARD_APPLET_MAPPINGS = {
+    'A000000804000101': 'A00000080400010101',  # Keycard applet
+    'A000000804000102': 'D2760000850101',      # NDEF applet
+    'A000000804000103': 'A00000080400010301',  # Cash applet
+    # Note: A000000804000104 is typically not instantiated
+}
+
+# Seedkeeper applet instance AID mappings
+# Maps module AID to installation config (instance AID, make_selectable)
+SEEDKEEPER_APPLET_MAPPINGS = {
+    '536565644B656570657200': {
+        'instance_aid': '536565644B656570657200',  # Main applet, same as module AID
+        'make_selectable': True,
+    },
+    '536565644B656570657201': {
+        'instance_aid': 'D2760000850101',  # NDEF applet with standard ISO instance AID
+        'make_selectable': True,
+    },
+}
+
+
+def __get_keycard_applet_config__(load_file_path):
+    '''
+        Detects if a CAP file is a Keycard CAP file and returns the appropriate
+        module and instance AIDs for installation.
+        
+        :param str load_file_path: The path of the CAP file.
+        :returns tuple: (module_aids, instance_aids, selectability) or (None, None, None) if not a Keycard CAP file.
+    '''
+    try:
+        applet_aids = get_applet_aids(load_file_path)
+        
+        # Check if this looks like a Keycard CAP file by checking for known applets
+        keycard_applets = [aid for aid in applet_aids if aid in KEYCARD_APPLET_MAPPINGS]
+        
+        if len(keycard_applets) > 0:
+            # Build module and instance AID lists for the detected Keycard applets
+            module_aids = []
+            instance_aids = []
+            for module_aid in applet_aids:
+                if module_aid in KEYCARD_APPLET_MAPPINGS:
+                    module_aids.append(module_aid)
+                    instance_aids.append(KEYCARD_APPLET_MAPPINGS[module_aid])
+            
+            if len(module_aids) > 0:
+                return module_aids, instance_aids, None
+    except:
+        pass
+    
+    return None, None, None
+
+
+def __get_seedkeeper_applet_config__(load_file_path):
+    '''
+        Detects if a CAP file is a Seedkeeper CAP file and returns the appropriate
+        module and instance AIDs for installation with per-applet selectability control.
+        
+        :param str load_file_path: The path of the CAP file.
+        :returns tuple: (module_aids, instance_aids, selectability_list, params_list) or (None, None, None, None) if not a Seedkeeper CAP file.
+    '''
+    try:
+        applet_aids = get_applet_aids(load_file_path)
+        
+        # Check if this looks like a Seedkeeper CAP file
+        seedkeeper_applets = [aid for aid in applet_aids if aid in SEEDKEEPER_APPLET_MAPPINGS]
+        
+        if len(seedkeeper_applets) > 0:
+            # Build module and instance AID lists with per-applet selectability and parameters
+            module_aids = []
+            instance_aids = []
+            selectability = []
+            params_list = []
+            
+            for module_aid in applet_aids:
+                if module_aid in SEEDKEEPER_APPLET_MAPPINGS:
+                    config = SEEDKEEPER_APPLET_MAPPINGS[module_aid]
+                    module_aids.append(module_aid)
+                    instance_aids.append(config['instance_aid'])
+                    selectability.append(config['make_selectable'])
+                    # Pass empty string for params (will result in C900 instead of C903000000)
+                    params_list.append('')
+            
+            if len(module_aids) > 0:
+                return module_aids, instance_aids, selectability, params_list
+    except:
+        pass
+    
+    return None, None, None, None
+
+
+def __get_installed_application_aids__():
+    '''
+        Returns the list of application instance AIDs currently installed on the card.
+        
+        :returns list: List of application AIDs as uppercase strings, or empty list if none found or error occurs.
+    '''
+    try:
+        error_status, app_info = gp.get_status('40')
+        if error_status['errorStatus'] != 0x00 or app_info is None:
+            return []
+        
+        status_dic = tlv_read(app_info)['E3']
+        # Handle both dict and list returns from tlv_read
+        app_list = status_dic if isinstance(status_dic, list) else [status_dic]
+        
+        installed_aids = []
+        for status_app in app_list:
+            if '4F' in status_app:
+                installed_aids.append(status_app['4F'].upper())
+        
+        return installed_aids
+    except:
+        return []
+
+
+def __get_loaded_package_aids__():
+    '''
+        Returns the list of loaded package AIDs currently on the card.
+        
+        :returns list: List of package AIDs as uppercase strings, or empty list if none found or error occurs.
+    '''
+    try:
+        error_status, exefile_info = gp.get_status('10')
+        if error_status['errorStatus'] != 0x00 or exefile_info is None:
+            return []
+        
+        status_dic = tlv_read(exefile_info)['E3']
+        # Handle both dict and list returns from tlv_read
+        elf_list = status_dic if isinstance(status_dic, list) else [status_dic]
+        
+        loaded_aids = []
+        for status_elf in elf_list:
+            if '4F' in status_elf:
+                loaded_aids.append(status_elf['4F'].upper())
+        
+        return loaded_aids
+    except:
+        return []
+
+
+def __detect_ndef_conflict__(instance_aids, module_aids):
+    '''
+        Detects if installing the given applets would create an NDEF conflict
+        (when trying to install NDEF but it already exists on the card).
+        
+        :param list instance_aids: List of instance AIDs being installed
+        :param list module_aids: List of module AIDs being installed
+        :returns tuple: (has_conflict, new_ndef_applet) or (False, None) if no conflict
+    '''
+    NDEF_AID = 'D2760000850101'
+    
+    if not instance_aids or not module_aids:
+        return False, None
+    
+    # Check if trying to install NDEF
+    if NDEF_AID.upper() not in [aid.upper() for aid in instance_aids]:
+        return False, None
+    
+    # Find which applet is providing NDEF
+    new_ndef_applet = None
+    for name, config in NDEF_APPLET_MAPPINGS.items():
+        if (config['module_aid'].upper() in [aid.upper() for aid in module_aids] and
+            config['instance_aid'].upper() == NDEF_AID.upper()):
+            new_ndef_applet = name
+            break
+    
+    if new_ndef_applet is None:
+        return False, None
+    
+    # Check if NDEF is already installed on the card
+    try:
+        installed_apps = __get_installed_application_aids__()
+        if NDEF_AID.upper() in installed_apps:
+            return True, new_ndef_applet
+    except:
+        pass
+    
+    return False, None
+
+
+def __handle_ndef_conflict__(new_ndef_applet, instance_aids, module_aids):
+    '''
+        Handles NDEF conflicts by removing the NDEF applet from installation
+        and instructing user how to switch.
+        
+        :param str new_ndef_applet: Name of applet trying to provide NDEF
+        :param list instance_aids: List of instance AIDs (will be modified in place)
+        :param list module_aids: List of module AIDs (will be modified in place)
+    '''
+    NDEF_AID = 'D2760000850101'
+    
+    logger.log_info("")
+    logger.log_info("⚠️  NDEF APPLET CONFLICT:")
+    logger.log_info("  The NDEF applet (%s) is already installed on your card." % NDEF_AID)
+    logger.log_info("  Only one NDEF applet can be active at a time.")
+    logger.log_info("")
+    logger.log_info("  To use %s's NDEF instead:" % new_ndef_applet)
+    logger.log_info("    1. Delete the current NDEF: pygp --delete %s" % NDEF_AID)
+    logger.log_info("    2. Reinstall: pygp --install <your-capfile>")
+    logger.log_info("")
+    logger.log_info("  For now, removing NDEF from %s installation." % new_ndef_applet)
+    logger.log_info("")
+    
+    # Remove NDEF module from the lists
+    ndef_module = NDEF_APPLET_MAPPINGS[new_ndef_applet]['module_aid'].upper()
+    
+    # Find and remove NDEF module from the lists
+    indices_to_remove = []
+    for i, module_aid in enumerate(module_aids):
+        if module_aid.upper() == ndef_module:
+            indices_to_remove.append(i)
+    
+    # Remove in reverse order to maintain indices
+    for i in reversed(indices_to_remove):
+        module_aids.pop(i)
+        if instance_aids and i < len(instance_aids):
+            instance_aids.pop(i)
+
+
+
+def install_capfile(load_file_path, security_domain_aid = '', module_aids = None, instance_aids = None,
+                    application_privileges = None, application_specific_parameters = None,
+                    install_parameters = None, make_selectable = True, block_size = 230,
+                    load_file_data_block_hash = None, load_parameters = None, load_token = None,
+                    install_token = None, make_selectable_list = None):
+    '''
+        Performs a complete installation of a CAP file: install for load, load of all
+        the CAP blocks and then one install for install per applet (module) found in
+        the CAP file. This handles CAP files that contain **several applets** (such as
+        the Keycard / Status or Seedkeeper CAP files) in a single call.
+
+        :param str load_file_path: The path of the CAP (or IJC) file to install.
+        :param str security_domain_aid: The AID of the Security Domain the package is
+            associated with. An empty string (default) associates it with the currently
+            selected Security Domain (usually the Issuer Security Domain).
+        :param list module_aids: The list of applet (module) AIDs to instantiate. If
+            ``None`` (default) every applet present in the CAP file is instantiated.
+        :param list instance_aids: The list of application instance AIDs to create, in the
+            same order as ``module_aids``. If ``None`` (default) the module AID is reused
+            as the instance AID.
+        :param application_privileges: Either a single list of :ref:`privileges` applied to
+            every instance, or a list of privilege lists (one per module).
+        :param application_specific_parameters: The application specific install parameters
+            (encoded under tag ``C9``). Either a single hexadecimal string applied to every
+            instance, or a list (one per module). Needed for example by the Seedkeeper applet
+            to set the secret memory size.
+        :param install_parameters: The system install parameters (encoded under tag ``EF``).
+            Either a single hexadecimal string applied to every instance, or a list.
+        :param bool make_selectable: True (default) if the applications must be made selectable.
+        :param int block_size: The size of the LOAD data blocks.
+        :param str load_file_data_block_hash: Optional load file data block hash.
+        :param str load_parameters: Optional load parameters (tag ``EF``).
+        :param str load_token: Optional load token.
+        :param install_token: Optional install token. Either a single value applied to every
+            instance or a list (one per module).
+        :param list make_selectable_list: Optional per-applet selectability control. If provided,
+            overrides the make_selectable parameter for each applet.
+
+        :returns list: The list of (module_aid, instance_aid) tuples that were installed.
+
+        .. note:: A token-protected card or DAP verification is not handled automatically by
+            this helper; provide the relevant tokens / hashes explicitly when required.
+    '''
+    try:
+        # 1. parse and verify the load file
+        load_file_obj = loadfile.Loadfile(load_file_path)
+        package_aid = load_file_obj.get_aid()
+
+        # Check if package is already loaded on the card
+        loaded_packages = __get_loaded_package_aids__()
+        package_already_loaded = package_aid.upper() in loaded_packages
+
+        if not package_already_loaded:
+            # 2. install for load
+            error_status = gp.install_load(package_aid, security_domain_aid, load_file_data_block_hash, load_parameters, load_token)
+            __handle_error_status__(error_status, "install_capfile (install for load): ")
+
+            # 3. load the CAP blocks
+            error_status = gp.load_blocks(load_file_path, block_size)
+            __handle_error_status__(error_status, "install_capfile (load): ")
+        else:
+            logger.log_info("Package %s is already loaded on the card, skipping load steps." % package_aid.upper())
+
+        # 4. determine the modules to instantiate
+        if module_aids is None:
+            # Check if this is a Seedkeeper CAP file with special selectability requirements
+            seedkeeper_modules, seedkeeper_instances, seedkeeper_selectability, seedkeeper_params = __get_seedkeeper_applet_config__(load_file_path)
+            if seedkeeper_modules is not None:
+                module_aids = seedkeeper_modules
+                instance_aids = seedkeeper_instances
+                make_selectable_list = seedkeeper_selectability
+                # Use Seedkeeper specific parameters (empty string for each applet)
+                if application_specific_parameters is None:
+                    application_specific_parameters = seedkeeper_params
+            else:
+                # Check if this is a Keycard CAP file and use the predefined mappings
+                keycard_modules, keycard_instances, _ = __get_keycard_applet_config__(load_file_path)
+                if keycard_modules is not None:
+                    module_aids = keycard_modules
+                    instance_aids = keycard_instances
+                else:
+                    # Not a known CAP file, use all applets with module AID as instance AID
+                    module_aids = load_file_obj.get_applet_aid()
+        if module_aids is None:
+            module_aids = []
+
+        # Detect NDEF conflicts before installation
+        has_conflict, new_ndef = __detect_ndef_conflict__(instance_aids, module_aids)
+        if has_conflict:
+            __handle_ndef_conflict__(new_ndef, instance_aids, module_aids)
+
+        # Get list of already installed applications to skip duplicates
+        installed_app_aids = __get_installed_application_aids__()
+
+        installed = []
+        for index, module_aid in enumerate(module_aids):
+            # resolve the instance AID (default to the module AID)
+            if instance_aids is not None and index < len(instance_aids) and instance_aids[index] is not None:
+                instance_aid = instance_aids[index]
+            else:
+                instance_aid = module_aid
+
+            # Check if this applet instance is already installed
+            if instance_aid.upper() in installed_app_aids:
+                logger.log_info("Applet instance %s is already installed, skipping..." % instance_aid.upper())
+                installed.append((module_aid, instance_aid))
+                continue
+
+            # resolve the per-applet optional fields (accept either a single value or a list)
+            privileges = __select_privileges__(application_privileges, index)
+            specific_parameters = __select_scalar__(application_specific_parameters, index)
+            ef_parameters = __select_scalar__(install_parameters, index)
+            token = __select_scalar__(install_token, index)
+            
+            # resolve per-applet selectability (use per-applet list if available, otherwise use default)
+            applet_make_selectable = make_selectable
+            if make_selectable_list is not None and index < len(make_selectable_list):
+                applet_make_selectable = make_selectable_list[index]
+
+            b_string_privilege = gp_utils.privilegesToBytes(privileges)
+
+            error_status = gp.install_install(applet_make_selectable, package_aid, module_aid, instance_aid,
+                                              b_string_privilege, specific_parameters, ef_parameters, token)
+            __handle_error_status__(error_status, "install_capfile (install for install): ")
+            installed.append((module_aid, instance_aid))
+
+        return installed
+
+    except BaseException as e:
+        logger.log_error(str(e))
+        raise
+
+
+def __select_privileges__(privileges, index):
+    '''
+        Resolve the privileges to use for the applet at position ``index``.
+
+        ``privileges`` may be ``None`` (no privileges), a flat list of privilege
+        strings shared by every applet (e.g. ``["SD", "TP"]``) or a list of
+        privilege lists, one per applet (e.g. ``[["SD"], []]``).
+    '''
+    if privileges is None:
+        return []
+    # list of per-applet privilege lists
+    if isinstance(privileges, list) and len(privileges) > 0 and all(isinstance(item, list) for item in privileges):
+        if index < len(privileges):
+            return privileges[index]
+        return []
+    # a flat privileges list shared by every applet
+    return privileges
+
+
+def __select_scalar__(value, index):
+    '''
+        Resolve a per-applet scalar value (parameters, token).
+
+        ``value`` may be ``None``, a single value shared by every applet, or a
+        list with one value per applet.
+    '''
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        if index < len(value):
+            return value[index]
+        return None
+    return value
 

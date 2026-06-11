@@ -10,7 +10,7 @@ def remove_space(bytestring):
 
     """
     import re
-    bytestring = ''.join( re.split( '\W+', bytestring.upper() ) )
+    bytestring = ''.join( re.split( r'\W+', bytestring.upper() ) )
     return bytestring
 
 def check_expected_data(data, expected_data):
@@ -38,7 +38,7 @@ def check_expected_data(data, expected_data):
         expected = listOfData[aData]
         expected = remove_space(expected)
         import re
-        expected = ''.join(re.split('\W+', expected.upper()))
+        expected = ''.join(re.split(r'\W+', expected.upper()))
         DataCheckOK = True
         
         if (len (expected) != len (data)):
@@ -75,7 +75,7 @@ def toByteArray(byteString):
         
     """
     import re
-    packedstring = ''.join( re.split( '\W+', byteString.upper() ) )
+    packedstring = ''.join( re.split( r'\W+', byteString.upper() ) )
     aArray = bytearray.fromhex(packedstring.upper())
     value = list(aArray)
     return value
@@ -122,7 +122,7 @@ def getBytes(data, byteNumber,length = 1):
     """
 
     import re
-    bytestr = ''.join( re.split( '\W+', data.upper() ) )
+    bytestr = ''.join( re.split( r'\W+', data.upper() ) )
     byteArray = toByteArray(bytestr)
     part = byteArray[byteNumber - 1:byteNumber - 1 + length]
     return toHexString(part)
@@ -146,7 +146,7 @@ def lv(bytestring):
 
     '''
     import re
-    bytestr = ''.join( re.split( '\W+', bytestring.upper() ) )
+    bytestr = ''.join( re.split( r'\W+', bytestring.upper() ) )
 
     length = int(len(bytestr)/2)
     if (length > 0xFF):
@@ -179,7 +179,7 @@ def ber_lv(bytestring):
 
     '''
     import re
-    bytestr = ''.join( re.split( '\W+', bytestring.upper() ) )
+    bytestr = ''.join( re.split( r'\W+', bytestring.upper() ) )
 
     length = int(len(bytestr)/2)
     if (length > 0x7FFF):
@@ -219,7 +219,7 @@ def der_lv(bytestring):
 
     '''
     import re
-    bytestr = ''.join( re.split( '\W+', bytestring.upper() ) )
+    bytestr = ''.join( re.split( r'\W+', bytestring.upper() ) )
 
     length = int(len(bytestr)/2)
     if (length > 0xFF):
@@ -291,7 +291,7 @@ def getLength(bytestr, length = 1):
             
     '''
     import re
-    bytestr = ''.join( re.split( '\W+', bytestr.upper() ) )
+    bytestr = ''.join( re.split( r'\W+', bytestr.upper() ) )
     bytestr_length = int((len(bytestr)/2))
     return intToHexString(bytestr_length,length)
 
@@ -317,7 +317,7 @@ def increment(bytestr,value):
 
     '''
     import re
-    data = ''.join( re.split( '\W+', bytestr.upper() ) )
+    data = ''.join( re.split( r'\W+', bytestr.upper() ) )
     # value is an integer
     if type(value) is int:
         # addition
@@ -331,7 +331,7 @@ def increment(bytestr,value):
     # value is a string
     elif type(value) is str:
         #remove space
-        value = ''.join( re.split( '\W+', value.upper() ) )
+        value = ''.join( re.split( r'\W+', value.upper() ) )
         # addition
         data_value = int(data, 16)
         value = int(value, 16)

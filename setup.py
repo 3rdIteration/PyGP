@@ -48,9 +48,16 @@ setup(
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
 
-        "Operating System :: Microsoft :: Windows",
+        "Operating System :: OS Independent",
     ],
 
     # What does your project relate to?
@@ -68,7 +75,10 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['cryptography'],
+    install_requires=['cryptography', 'pyscard'],
+
+    # Supported interpreter versions (Python 3.8 through 3.14).
+    python_requires='>=3.8',
 
 
     # If there are data files included in your packages that need to be
@@ -89,9 +99,9 @@ setup(
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
-    #entry_points={
-    #    'console_scripts': [
-     #       'sample=sample:main',
-    #    ],
-    #},
+    entry_points={
+        'console_scripts': [
+            'pygp=pygp.cli:main',
+        ],
+    },
 )
