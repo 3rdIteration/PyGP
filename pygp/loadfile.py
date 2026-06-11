@@ -203,6 +203,28 @@ class Loadfile(object):
                 offset = offset + 2
         return applets_aid
 
+    def get_applet_info(self):
+        ''' returns a list of dicts with applet information including AID and install method '''
+        # look into the applet component
+        applets_info = []
+        if "Applet" in self.components.keys():
+            applet_component_str = self.components["Applet"]
+            applet_count = utils.getBytes(applet_component_str,4)
+            offset = 5
+            for i in range(0, int(applet_count, 16)):
+                aid_len = utils.getBytes(applet_component_str,offset)
+                offset = offset + 1
+                aid = utils.getBytes(applet_component_str,offset, int(aid_len, 16))
+                offset = offset + int(aid_len, 16)
+                # get install method
+                install_method = utils.getBytes(applet_component_str, offset, 2)
+                offset = offset + 2
+                applets_info.append({
+                    'aid': aid,
+                    'install_method': install_method
+                })
+        return applets_info
+
     
     def get_version(self):
         ''' returns the load file  version '''

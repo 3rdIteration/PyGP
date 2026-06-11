@@ -3,7 +3,8 @@
 # and redirect to the open source project cryptography
 from pygp.utils import *
 from pygp.constants import *
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from cryptography.hazmat.primitives.ciphers import Cipher, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.primitives import cmac
@@ -18,6 +19,15 @@ from cryptography.hazmat.primitives.asymmetric import utils as asymmetric_utils
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.serialization import PublicFormat
 from cryptography import utils
+
+# Try to import algorithms from the new location (cryptography >= 48.0.0)
+# Fall back to old location for older versions
+try:
+    from cryptography.hazmat.decrepit.ciphers import algorithms
+except ImportError:
+    from cryptography.hazmat.primitives.ciphers import algorithms
+
+
 
 
 

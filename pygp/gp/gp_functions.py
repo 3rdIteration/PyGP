@@ -1462,7 +1462,7 @@ def install_install(make_selectable, executable_LoadFile_AID, executable_Module_
     if application_specific_parameters != None:
         parameter_field = parameter_field + 'C9' + lv(remove_space(application_specific_parameters))
     else:
-        parameter_field =parameter_field + 'C903000000'
+        parameter_field =parameter_field + 'C900'
     
     if install_parameters != None:
         parameter_field = parameter_field + 'EF' + lv(remove_space(install_parameters))
