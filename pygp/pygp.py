@@ -925,9 +925,10 @@ def ls():
             app_list = status_dic if isinstance(status_dic, list) else [status_dic]
             for status_app in app_list:
                 aid_name = aid_dict.get(status_app['4F'].upper(), '')
+                lifecycle_state = Application_LifeCycleState.get(status_app['9F70'][:2], status_app['9F70'][:2])
                 logger.log_info("Application AID : %s {%s} (%s) (%s)" % \
                                 (status_app['4F'].upper(), aid_name, \
-                                Application_LifeCycleState[status_app['9F70'][:2]], \
+                                lifecycle_state, \
                                 gp_utils.bytesToPrivileges(status_app['C5']) ))
 
         if exefile_info != None:      
