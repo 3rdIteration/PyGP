@@ -1,2 +1,4 @@
 /pygp/__pycache__
 *.pyc
+/build
+/PyGP.egg-info

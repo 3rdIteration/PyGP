@@ -1912,9 +1912,9 @@ def install_capfile(load_file_path, security_domain_aid = '', module_aids = None
                     install_token = None, make_selectable_list = None):
     '''
         Performs a complete installation of a CAP file: install for load, load of all
-        the CAP blocks and then one install for install per applet (module) found in
-        the CAP file. This handles CAP files that contain **several applets** (such as
-        the Keycard / Status or Seedkeeper CAP files) in a single call.
+        the CAP blocks and then one install per applet (module) found in the CAP file.
+        This handles CAP files that contain **several applets** (such as the Keycard /
+        Status or Seedkeeper CAP files) in a single call.
 
         :param str load_file_path: The path of the CAP (or IJC) file to install.
         :param str security_domain_aid: The AID of the Security Domain the package is
@@ -1943,11 +1943,22 @@ def install_capfile(load_file_path, security_domain_aid = '', module_aids = None
         :param list make_selectable_list: Optional per-applet selectability control. If provided,
             overrides the make_selectable parameter for each applet.
 
-        :returns list: The list of (module_aid, instance_aid) tuples that were installed.
+        :returns: A dictionary with the following keys:
+
+          * ``'installed'`` (list): The list of (module_aid, instance_aid) tuples that were
+            successfully installed.
+          * ``'ndef_skipped'`` (bool): True if a NDEF module was present in the CAP file but
+            was automatically skipped due to an existing NDEF applet on the card. False otherwise.
+
+        :rtype: dict
 
         .. note:: A token-protected card or DAP verification is not handled automatically by
             this helper; provide the relevant tokens / hashes explicitly when required.
+
+        .. note:: For backward compatibility, calling code should handle both old return format
+            (list of tuples) and new format (dict). The dict will always be used in new code.
     '''
+    ndef_skipped = False
     try:
         # 1. parse and verify the load file
         load_file_obj = loadfile.Loadfile(load_file_path)
@@ -1994,6 +2005,7 @@ def install_capfile(load_file_path, security_domain_aid = '', module_aids = None
         # Detect NDEF conflicts before installation
         has_conflict, new_ndef = __detect_ndef_conflict__(instance_aids, module_aids)
         if has_conflict:
+            ndef_skipped = True
             __handle_ndef_conflict__(new_ndef, instance_aids, module_aids)
 
         # Get list of already installed applications to skip duplicates
@@ -2031,7 +2043,7 @@ def install_capfile(load_file_path, security_domain_aid = '', module_aids = None
             __handle_error_status__(error_status, "install_capfile (install for install): ")
             installed.append((module_aid, instance_aid))
 
-        return installed
+        return {'installed': installed, 'ndef_skipped': ndef_skipped}
 
     except BaseException as e:
         logger.log_error(str(e))
