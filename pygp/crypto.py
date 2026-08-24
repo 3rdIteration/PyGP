@@ -593,7 +593,7 @@ def MAC3(data, key, padding='ISO_9797_M2', iv="0000000000000000"):
     import re
     key = ''.join( re.split( r'\W+', key.upper() ) )
     if len(key) < 16*2:
-        raise BaseException("Invalid key length for the MAC3 operation")
+        raise PyGPDataError("Invalid key length for the MAC3 operation")
 
     if padding == 'ISO_9797_M2':
         data = ISO_9797_M2_Padding(data)

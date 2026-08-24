@@ -73,6 +73,19 @@ from pygp.pygp import *
 # regardless of internal import chains.
 from pygp.utils import tlv_read, tlv_print
 
+# ---------------------------------------------------------------------------
+# Exception hierarchy
+# ---------------------------------------------------------------------------
+# Every error PyGP raises derives from PyGPError(Exception), so `except
+# Exception` catches them. These used to be bare BaseException, which escaped
+# ordinary error handling and killed the calling process.
+from pygp.exceptions import (
+    PyGPError,
+    PyGPConnectionError,
+    PyGPCardError,
+    PyGPDataError,
+)
+
 # `log_info` lives in pygp.logger and is needed by try_auth(). Import it
 # explicitly to avoid circular-import issues (logger.py does ``from pygp import *``).
 from pygp.logger import log_info

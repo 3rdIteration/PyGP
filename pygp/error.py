@@ -1,4 +1,9 @@
 from pygp.utils import *
+# Re-exported so ``from pygp.error import *`` consumers (gp_crypto, gp_functions,
+# connection) get the exception types without a separate import.
+from pygp.exceptions import (
+    PyGPError, PyGPConnectionError, PyGPCardError, PyGPDataError,
+)
 
 ERROR_STATUS_SUCCESS = 0x00
 ERROR_STATUS_FAILURE = 0x01

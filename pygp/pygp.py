@@ -1,5 +1,8 @@
 import pygp.logger as logger
 import pygp.error as error
+from pygp.exceptions import (
+    PyGPError, PyGPConnectionError, PyGPCardError, PyGPDataError,
+)
 import pygp.gp.gp_functions as gp
 import pygp.gp.gp_utils as gp_utils
 import pygp.connection.connection as conn
@@ -38,11 +41,11 @@ def __handle_error_status__(error_status, function_name = ''):
             logger.log_error("** " + function_name + error_status['errorMessage'] + " **")
         else:
             # stop execution by throwing an exception with the message 
-            raise BaseException(error_status['errorMessage'])
+            raise PyGPCardError(error_status['errorMessage'])
 
     if error_status['errorStatus'] == error.ERROR_STATUS_CRITICAL:
         # Always raise exception with the message on critical error
-        raise BaseException(error_status['errorMessage'])
+        raise PyGPCardError(error_status['errorMessage'])
 
 
 def stop_on_error(value):
@@ -354,7 +357,7 @@ def get_key_in_repository(keysetversion, key_identifier = None):
     return found_key_list
     
     # no key was found so raise exception
-    raise BaseException ("No matching key found into the off card keys repository")
+    raise PyGPDataError ("No matching key found into the off card keys repository")
 
 
 def terminal(readerName = None):
@@ -404,7 +407,7 @@ def terminal(readerName = None):
                         break
 
                 if readerName == None:
-                    raise BaseException("Failed to connect, please check the card.")
+                    raise PyGPConnectionError("Failed to connect, please check the card.")
 
                 logger.log_debug('Using first available reader in the list: %s' %readerName)
         
@@ -465,7 +468,7 @@ def change_protocol(protocol):
     '''
     global current_protocol
     if protocol != 'T0' and protocol != 'T1' and protocol != 'RAW' and protocol != 'Tx':
-        raise BaseException(" %s argument is invalid." % protocol)
+        raise PyGPDataError(" %s argument is invalid." % protocol)
     else:
         if protocol ==  'T0':
             current_protocol = conn.SCARD_PROTOCOL_T0
@@ -476,7 +479,7 @@ def change_protocol(protocol):
         elif protocol ==  'Tx':
             current_protocol = conn.SCARD_PROTOCOL_Tx
         else:
-            raise BaseException(" %s argument is invalid." % protocol)
+            raise PyGPDataError(" %s argument is invalid." % protocol)
 
 
 def card():
@@ -1164,7 +1167,7 @@ def init_update(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi
             if len(found_key_list) > 0:
                 (enc_key_vn, enc_key_id, enc_key_type, enc_key,) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '1' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '1' into the off card key repository" %keysetversion )
         
         if mac_key == None:
             # get the key from the repository
@@ -1172,7 +1175,7 @@ def init_update(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi
             if len(found_key_list) > 0:
                 (mac_key_vn, mac_key_id, mac_key_type, mac_key) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '2' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '2' into the off card key repository" %keysetversion )
         
         if dek_key == None:
             # get the key from the repository
@@ -1180,7 +1183,7 @@ def init_update(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi
             if len(found_key_list) > 0:
                 (dek_key_vn, dek_key_id, dek_key_type, dek_key) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '3' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '3' into the off card key repository" %keysetversion )
         
         # TODO: manage this case ???
         base_key = None # ???
@@ -1260,7 +1263,7 @@ def auth(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi = None
             if len(found_key_list) > 0:
                 (enc_key_vn, enc_key_id, enc_key_type, enc_key,) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '1' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '1' into the off card key repository" %keysetversion )
         
         if mac_key == None:
             # get the key from the repository
@@ -1268,7 +1271,7 @@ def auth(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi = None
             if len(found_key_list) > 0:
                 (mac_key_vn, mac_key_id, mac_key_type, mac_key) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '2' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '2' into the off card key repository" %keysetversion )
         
         if dek_key == None:
             # get the key from the repository
@@ -1276,7 +1279,7 @@ def auth(enc_key = None, mac_key = None, dek_key = None, scp = None, scpi = None
             if len(found_key_list) > 0:
                 (dek_key_vn, dek_key_id, dek_key_type, dek_key) = found_key_list[0]
             else:
-                raise BaseException("Could not find key with key version number %s and key id '3' into the off card key repository" %keysetversion )
+                raise PyGPDataError("Could not find key with key version number %s and key id '3' into the off card key repository" %keysetversion )
         
         # TODO: manage this case ???
         base_key = None # ???

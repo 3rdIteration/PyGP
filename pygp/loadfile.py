@@ -7,6 +7,7 @@ from ctypes import c_ubyte
 import pygp.utils as utils
 import pygp.constants as constants
 import pygp.crypto as crypto
+from pygp.exceptions import PyGPDataError
 
 
 
@@ -45,7 +46,7 @@ class Loadfile(object):
         
         # check if it is a cap file
         if self.is_capfile == False:
-            raise BaseException("The file %s is not a valid CAP File" %self.loadfile_path)
+            raise PyGPDataError("The file %s is not a valid CAP File" %self.loadfile_path)
     
 
     def get_load_blocks(self, blockSize, addHeader = True):
@@ -357,7 +358,7 @@ class Loadfile(object):
 
             return data.tolist()
         else:
-            raise BaseException("File Not found Error", "The File %s doesn't exist)" %self.loadfile_path)
+            raise PyGPDataError("File Not found Error", "The File %s doesn't exist)" %self.loadfile_path)
 
     def read_ijc_format(self):
     

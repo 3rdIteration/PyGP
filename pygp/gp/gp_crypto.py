@@ -411,7 +411,7 @@ def create_session_key_SCP02(key, k_type, sequenceCounter ):
     elif k_type == KRMAC_TYPE:
         der_data = crypto.ISO_9797_M1_Padding('0102' + sequenceCounter, 16)
     else:
-        raise BaseException("create session key for SCP02: key type not supported")
+        raise PyGPDataError("create session key for SCP02: key type not supported")
 
     return crypto.DES3_CBC(der_data, key, crypto.ICV_NULL_8)
 
@@ -440,7 +440,7 @@ def create_session_key_SCP03(key, k_type, cardChallenge, hostChallenge ):
     elif k_type == KRMAC_TYPE:
         CST_DERIVATION = SCP03_CST_DERIVATION_R_MAC
     else:
-        raise BaseException("create session key for SCP03: key type not supported")
+        raise PyGPDataError("create session key for SCP03: key type not supported")
 
     KDF_COUNTER_MAX_VALUE = '00'
       
@@ -468,7 +468,7 @@ def create_session_key_SCP03(key, k_type, cardChallenge, hostChallenge ):
         der_data += '01'                                                            # A 1 byte counter i as specified in the KDF (which may take the values 01 or 02; value 02 is used when L takes the values 00C0 and 0100,
         KDF_COUNTER_MAX_VALUE = '02'
     else:
-       raise BaseException("create session key for SCP03: key size not supported")
+       raise PyGPDataError("create session key for SCP03: key size not supported")
         
     der_data += hostChallenge                                                 # Host challenge
     der_data += cardChallenge                                                 # card challenge

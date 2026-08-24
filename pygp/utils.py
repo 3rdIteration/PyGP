@@ -1,5 +1,9 @@
 import collections
 
+from pygp.exceptions import (
+    PyGPError, PyGPConnectionError, PyGPCardError, PyGPDataError,
+)
+
 def remove_space(bytestring):
     """
         Removes all whitespace characters of a string.
@@ -342,7 +346,7 @@ def increment(bytestr,value):
             tmp_string = '00' + tmp_string
 
     else:
-        raise BaseException("Wrong parameter type")
+        raise PyGPDataError("Wrong parameter type")
 
     return tmp_string
 
