@@ -244,7 +244,7 @@ def _run(args):
 
         if args.install:
             privileges = args.privs if args.privs else None
-            installed = pygp.install_capfile(
+            result = pygp.install_capfile(
                 args.install,
                 security_domain_aid=args.sdaid or '',
                 module_aids=args.module,
@@ -254,7 +254,7 @@ def _run(args):
                 install_parameters=args.install_params,
                 block_size=args.block_size,
             )
-            for module_aid, instance_aid in installed:
+            for module_aid, instance_aid in result['installed']:
                 pygp.echo("Installed applet %s as instance %s" % (module_aid, instance_aid))
 
         if args.uninstall:

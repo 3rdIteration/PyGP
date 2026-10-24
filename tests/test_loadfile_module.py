@@ -67,9 +67,10 @@ class Test_Install_Capfile(unittest.TestCase):
     """
 
     def setUp(self):
+        # not the Keycard AIDs, which install_capfile maps to fixed instance AIDs
         self.cap_path = cap_fixture.make_temp_cap(
-            package_aid="A0000008040001",
-            applet_aids=("A000000804000101", "A000000804000102"),
+            package_aid="F0000000010001",
+            applet_aids=("F000000001000101", "F000000001000102"),
         )
         self._orig = (gp.install_load, gp.load_blocks, gp.install_install)
         self.install_calls = []
@@ -104,16 +105,16 @@ class Test_Install_Capfile(unittest.TestCase):
             os.remove(self.cap_path)
 
     def test_installs_every_applet(self):
-        installed = pygp.install_capfile(self.cap_path)
+        result = pygp.install_capfile(self.cap_path)
         self.assertEqual(len(self.install_calls), 2)
         self.assertEqual([c["module_aid"] for c in self.install_calls],
-                         ["A000000804000101", "A000000804000102"])
+                         ["F000000001000101", "F000000001000102"])
         # default instance AID equals the module AID
         self.assertEqual([c["instance_aid"] for c in self.install_calls],
-                         ["A000000804000101", "A000000804000102"])
-        self.assertEqual(installed,
-                         [("A000000804000101", "A000000804000101"),
-                          ("A000000804000102", "A000000804000102")])
+                         ["F000000001000101", "F000000001000102"])
+        self.assertEqual(result['installed'],
+                         [("F000000001000101", "F000000001000101"),
+                          ("F000000001000102", "F000000001000102")])
 
     def test_install_parameters_shared(self):
         """A single params value is applied to every installed applet (tag C9)."""
@@ -129,11 +130,11 @@ class Test_Install_Capfile(unittest.TestCase):
 
     def test_restrict_modules_and_instance_aids(self):
         pygp.install_capfile(self.cap_path,
-                             module_aids=["A000000804000102"],
-                             instance_aids=["A000000804000199"])
+                             module_aids=["F000000001000102"],
+                             instance_aids=["F000000001000199"])
         self.assertEqual(len(self.install_calls), 1)
-        self.assertEqual(self.install_calls[0]["module_aid"], "A000000804000102")
-        self.assertEqual(self.install_calls[0]["instance_aid"], "A000000804000199")
+        self.assertEqual(self.install_calls[0]["module_aid"], "F000000001000102")
+        self.assertEqual(self.install_calls[0]["instance_aid"], "F000000001000199")
 
     def test_privileges_shared_list(self):
         pygp.install_capfile(self.cap_path, application_privileges=["SD"])
